@@ -4,36 +4,30 @@ module Accessors
   def self.included(base)
     base.extend(ClassMethods)
   end
-    
+
   module ClassMethods
     def attr_accessor_with_history(arg)
-      arg_history = "arg_history_"+"#{arg}"
-      class_eval(
-      "def #{arg}
-        @#{arg}
+      history ||= []
+      define_method(arg.to_s) { instance_variable_get("@#{arg}") }
+      define_method("#{arg}=") do |value|
+        instance_variable_set("@#{arg}", value)
+        history << value
+        instance_variable_set("@#{arg}_history", history)
       end
-      def #{arg}=(value)
-        @#{arg} = value
-        @#{arg_history} = [] if @#{arg_history}.nil?
-        @#{arg_history} << value
-      end"
-      )
     end
 
     def strong_attr_accessor(arg, type)
-      class_eval(
-      "def #{arg}
-        @#{arg}
+      define_method(arg.to_s) { instance_variable_get("@#{arg}") }
+      define_method ("#{arg}=") do |value|
+        raise 'Type Error' if value.class.to_s != type
+
+        instance_variable_set("@#{arg}", value)
       end
-      begin
-        def #{arg}=(value)
-      raise 'Type Error' if value.class != #{type}
-      rescue StandardError => e
-	puts e.message
-        @#{arg} = value
-        end
-      end"
-      )
+    end
+
+    def attr_accessor_method(arg)
+      define_method(arg.to_s) { instance_variable_get("@#{arg}") }
+      define_method ("#{arg}=") { |value| instance_variable_set("@#{arg}", value) }
     end
   end
 end
@@ -43,17 +37,21 @@ class A
   def initialize(*arg); end
 end
 
-A.attr_accessor_with_history('dd')
+A.attr_accessor_with_history('dd') # create attr_accessor
 A.attr_accessor_with_history('tdfe')
 
 test = A.new
 test.dd = 5
 test.tdfe = 7865
-test.dd = "6"
+test.dd = '6'
+A.attr_accessor_method('s')
+test.s = 'sd'
 p test
 
-A.strong_attr_accessor('hhh', "#{1.class}")
+A.strong_attr_accessor('hhh', 7.class.to_s) # create attr, check class
 test.hhh = 7
-puts "proverka1"
+p test
+puts 'proverka1'
 test.hhh ="fff"
-puts "vse"
+p test
+puts 'vse'
